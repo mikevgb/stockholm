@@ -1,2 +1,0 @@
-# stockholm
-Replicate wannacry
