@@ -27,3 +27,6 @@ for extension in "${extensionList[@]}"; do
   randomString=$(randomStringGen 10)
   echo "$randomString" >> "$folder/$file"
 done
+
+touch "$folder/00.ft"
+touch "$folder/00.kk"

@@ -12,4 +12,4 @@ the required files and.
     -reverse or -r to revert the encryption
     -silent or -s to avoid printing the files that are being encrypted
     Without -password or -p it will use the default password
-    You can combine some of the flags, for example: ./stockholm -r -s or ./stockholm -p yourpass -r -s
+    You can combine some of the flags, for example: ./stockholm -s -r or ./stockholm -s -r -p yourpass

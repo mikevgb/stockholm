@@ -14,11 +14,15 @@ def doDir(directory, flag):
         allowedExtensions = [extension.strip().lower() for extension in extensionsFile.readlines()]
     pattern = os.path.join(directory, '*')
     files = glob.glob(pattern)
+    if flag == 0:
+        deleteHashes()
     for file in files:
         if flag == 0:
             encryptFile(file, allowedExtensions)
         else:
             reverseEncrypt(file)
+    if flag != 0:
+        deleteHashes()
             
 def deleteHashes():
     if os.path.exists(HASHES_FILE):
@@ -26,15 +30,15 @@ def deleteHashes():
 
 def encryptFile(file, EXTENSIONS):
     fileEx = os.path.splitext(file)[1]
-    if fileEx in EXTENSIONS:
+    originalFileName = os.path.splitext(file)[0]
+    if fileEx.lower() in EXTENSIONS:
         with open(file, 'rb') as fileR:
             plain = fileR.read()
         cipher = AES.new(key, AES.MODE_EAX)
         ciphertext, tag = cipher.encrypt_and_digest(plain)
         hash = generateHash(file)
-        
         with open(HASHES_FILE, 'a') as hashes:
-            hashes.write(file + ':' + hash + '\n')
+            hashes.write(originalFileName + fileEx + ':' + hash + '\n')
         encryptFilePath = file + '.ft'
         with open(encryptFilePath, 'wb') as encryptedFile:
             [encryptedFile.write(x) for x in (cipher.nonce, tag, ciphertext)]
@@ -43,43 +47,48 @@ def encryptFile(file, EXTENSIONS):
             print("File", file, "encrypted")
 
 def reverseEncrypt(file):
-    with open(HASHES_FILE, 'r') as hashes:
-        lines = hashes.readlines()
+    try:
+        with open(HASHES_FILE, 'r') as hashes:
+            lines = hashes.readlines()
+    except:
+        print("ERROR: Hash file not found")
+        exit(1)
     if not lines:
         print("No hashs found in", HASHES_FILE)
+        return
     for line in lines:
         line = line.strip()
         parts = line.split(':')
-        if len(parts) == 2 and parts[0].lower() == file.lower():
-            originalHash = parts[1]
-            print("Original Hash:", originalHash)
-            with open(file, 'rb') as encryptedFile:
-                nonce, tag, ciphertext = [encryptedFile.read(x) for x in (16, 16, -1)]    
-            cipher = AES.new(key, AES.MODE_EAX, nonce)
-            plain = cipher.decrypt_and_verify(ciphertext, tag)
-            decryptedFileName = file[:-3]
-            with open(decryptedFileName, 'wb') as decryptedFile:
-                decryptedFile.write(plain)
-            decryptedHash = generateHash(decryptedFileName)
-            print("Decrypted Hash:", decryptedHash)
-            if originalHash == decryptedHash:
-                if silent == 0:
-                    print("File", file, "decrypted successfully.")
-                os.remove(file)
-            else:
-                print("Failed to decrypt", file)
+        if len(parts) == 2:
+            if parts[0] == file[:-3]:
+                originalHash = parts[1]
+                with open(file, 'rb') as encryptedFile:
+                    nonce, tag, ciphertext = [encryptedFile.read(x) for x in (16, 16, -1)]    
+                cipher = AES.new(key, AES.MODE_EAX, nonce)
+                try:
+                    plain = cipher.decrypt_and_verify(ciphertext, tag)
+                    decryptedFileName = file[:-3]
+                    with open(decryptedFileName, 'wb') as decryptedFile:
+                        decryptedFile.write(plain)
+                    decryptedHash = generateHash(decryptedFileName)
+                    if originalHash == decryptedHash:
+                        if silent == 0:
+                            print("File", file, "decrypted successfully.")
+                        os.remove(file)
+                    else:
+                        print("Failed to decrypt", file)
+                    return
+                except ValueError:
+                    print("Failed to decrypt", file)
+                    return
+    if silent == 0:
+        print("File", file, "not found in the hashes file.")
 
 def generateHash(file):
-    BLOCK_SIZE = 65536 #64KB
-    fileHash = hashlib.sha256()
-    
-    with open(file, 'rb') as f:
-        buf = f.read(BLOCK_SIZE)
-        while len(buf) > 0:
-            fileHash.update(buf)
-            buf = f.read(BLOCK_SIZE)
-        
-    return fileHash.hexdigest()
+    fileEx = os.path.basename(file)
+    hash_object = hashlib.sha256(fileEx.encode())
+    hexDig = hash_object.hexdigest()
+    return hexDig
     
 def getPassword(inputPass):
     global key
@@ -107,17 +116,16 @@ if __name__ == '__main__':
                 print("Stockholm v0 by mvillaes")
             if a == "-silent" or a == "-s":
                 silent = 1
-                doDir(PATH, 0)
+                if len(sys.argv) < 3:
+                    doDir(PATH, 0)
             if a == "-reverse" or a == "-r":
                 if len(sys.argv) > sys.argv.index(a) + 2:
                     if sys.argv[sys.argv.index(a) + 1] == "-p" or  sys.argv[sys.argv.index(a) + 1] == "-password":
                         getPassword(sys.argv[sys.argv.index(a) + 2])
                 doDir(PATH, 1)
-                #deleteHashes()
+                exit()
             if a == "-password" or a == "-p":
                 getPassword(sys.argv[sys.argv.index(a) + 1])
-                #deleteHashes()
                 doDir(PATH, 0)
     else:
-        #deleteHashes()
         doDir(PATH, 0)
