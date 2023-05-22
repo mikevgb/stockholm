@@ -1,6 +1,6 @@
 #!/bin/bash
 
-folder="infection"
+folder="/home/infection"
 
 if [ ! -d "$folder" ]; then
   mkdir -p "$folder"
@@ -9,6 +9,8 @@ if [ ! -d "$folder" ]; then
     exit 1
   fi
 fi
+
+
 
 extensionsFile="extensions"
 extensions=()

